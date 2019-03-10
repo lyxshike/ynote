@@ -1,0 +1,136 @@
+什么是docker？
+     Docker 是世界领先的软件容器平台， docker属于linux容器的一种封装
+
+为什么要使用Docker？
+     轻松的迁移和扩展   docker容器可以在任意平台运行。 物理机，公有云， 私有云， 服务器
+	 高效的虚拟化。  docker不需要额外的hypervisor支持。
+     快速的交付和部署     一次创建或配置， 任意地方运行
+
+Docker和VM的区别
+      VM， 运行在宿主机上的完整的操作系统， 会占用较多的资源。 
+      docker 只包含应用程序和依赖库，不需要hypervisor， 轻量
+
+Docker 架构	  
+	  CS 架构
+	      Docker daemon，  运行在宿主机上， docker守护进程， 用户通过docker client 与docker daemon交互
+		  Docker client，  Dokcer命令行工具。 可以通过socket或者RESTful api访问远程的docker daemon
+	   Docker 三大主要概念
+          Docker image：镜像是只读的，镜像中包含有需要运行的文件。镜像用来创建container，一个镜像可以运行多个container；镜像可以通过Dockerfile创建，也可以从Docker hub/registry上下载 	   
+		  Docker container：容器是Docker的运行组件，启动一个镜像就是一个容器，容器是一个隔离环境，多个容器之间不会相互影响，保证容器中的程序运行在一个相对安全的环境中。
+          Docker hub/registry: 共享和管理Docker镜像，用户可以上传或者下载上面的镜像
+		  镜像就相当于打包好的版本，镜像启动之后运行在容器中，仓库就是装存储镜像的地方。
+		
+Docker 常用命令
+     docker pull image_name                           拉取docker镜像		
+	 docker images                                    查看宿主机上的镜像，Docker镜像保存在/var/lib/docker目录下:
+	 docker rmi  docker.io/tomcat:7.0.77-jre7   或者  docker rmi b39c68b7af30     删除镜像 
+	 docker ps                                        查看当前有哪些容器正在运行
+     docker ps -a                                     查看所有容器
+     docker start container_name/container_id         启动、停止、重启容器命令：
+     docker stop container_name/container_id
+     docker restart container_name/container_id  	 
+	 docker attach container_name/container_id        后台启动一个容器后，如果想进入到这个容器，可以使用attach命令
+     docker rm container_name/container_id            删除容器的命令
+     docker info                                      查看当前系统Docker信息
+     docker pull centos:latest                        从Docker hub上下载某个镜像: 	 
+	 
+
+Dockerfile
+      Dockerfile是一个文本文件，每一条指令描述该层应当如何构建。
+	  Docker镜像是一个特殊的文件系统， 由很多层构成， 只有最上层是可写的，其余层是只读的
+	
+    Dockerfile文件格式
+       # 1、第一行必须指定 基础镜像信息
+       FROM ubuntu
+	   # 2、维护者信息
+       MAINTAINER docker_user docker_user@email.com
+	   # 3、镜像操作指令
+       RUN echo "deb http://archive.ubuntu.com/ubuntu/ raring main universe" >> /etc/apt/sources.list
+       RUN apt-get update && apt-get install -y nginx
+       RUN echo "\ndaemon off;" >> /etc/nginx/nginx.conf
+	   # 4、容器启动执行指令
+       CMD /usr/sbin/nginx
+	   Dockerfile 分为四部分：基础镜像信息、维护者信息、镜像操作指令、容器启动执行指令
+	   
+	   docker build -t nginx:v1       docker文件所在目录执行，build该dockerfile对应的镜像
+	   通过dockerfile构建镜像的时候， 是通过docker daemon来做的， 并且dockerfile中的每一句都会对应生成一个镜像
+	   
+	Dockerfile  指令
+
+        from <image>    from制定基础镜像
+        run <command>	在镜像的构建过程中执行特定的命令，并生成一个中间镜像
+        copy <原路径> <目标路径>    复制文件
+        add <原路径> <目标路径>      更高级的复制文件。   比如原路径可以是一个URL， docker引擎会试图下载这个链接的文件放到目标路径中去
+        env <key> <value>    	         env version=1.0 debug=on 
+        env <key1>=<value1> <key2>=<value2>...		
+    	expose <port>  为构建的镜像设置监听端口，使容器在运行时监听
+        volume ["/data"]    volume 用于创建挂载点， 即向基于所构建镜像创始的容器添加卷
+        workdir /path/to/workdir   制定工作目录
+        user daemon    user用于制定运行镜像所使用的用户。
+
+DockerCompose
+        DockerCompose 允许用户在一个模板(YAML格式) 中定义一组相关联的应用容器(被称为一个project，即项目)，例如一个web服务容器再加上后端的数据库服务容器等。
+        
+		Compose 中有两个重要的概念：
+             服务 (service) ：一个应用的容器，实际上可以包括若干运行相同镜像的容器实例。
+             项目 (project) ：由一组关联的应用容器组成的一个完整业务单元，在 docker-compose.yml 文件中定义。		   
+	         一个项目可以由多个服务（容器）关联而成，Compose 面向项目进行管理
+		
+		docker-compose.yml 
+            version: '2'
+            services:
+              web:
+                build: 
+				command: python app.py.
+                ports:
+                 - "5000:5000"
+              redis:
+                image: "redis:alpine"		
+		
+        Docker Compose 常用命令 
+            docker-compose up -d      在后台启动服务
+            docker-compose ps         查看启动的服务
+            docker-compose stop       停止服务
+            
+        其他常用的命令  Docker-Compose 
+  		     #查看帮助
+             docker-compose -h
+             # -f  指定使用的 Compose 模板文件，默认为 docker-compose.yml，可以多次指定。
+             docker-compose -f docker-compose.yml up -d 
+             #启动所有容器，-d 将会在后台启动并运行所有的容器
+             docker-compose up -d
+             #停用移除所有容器以及网络相关
+             docker-compose down
+             #查看服务容器的输出
+             docker-compose logs
+             #列出项目中目前的所有容器
+             docker-compose ps
+             #构建（重新构建）项目中的服务容器。服务容器一旦构建后，将会带上一个标记名，例如对于 web 项目中的一个 db 容器，可能是 web_db。可以随时在项目目录下运行 docker-compose build 来重新构建服务
+             docker-compose build
+             #拉取服务依赖的镜像
+             docker-compose pull
+             #重启项目中的服务
+             docker-compose restart
+             #删除所有（停止状态的）服务容器。推荐先执行 docker-compose stop 命令来停止容器。
+             docker-compose rm 
+             #在指定服务上执行一个命令。
+             docker-compose run ubuntu ping docker.com   
+             #设置指定服务运行的容器个数。通过 service=num 的参数来设置数量
+             docker-compose scale web=3 db=2            
+             #启动已经存在的服务容器。
+             docker-compose start             
+             #停止已经处于运行状态的容器，但不删除它。通过 docker-compose start 可以再次启动这些容器。
+             docker-compose stop
+			 
+Docker Machine
+        负责在多种平台上快速安装docker环境
+
+Docker Swarm 
+        支持Docker集群管理的工具，可以把多个Docker主机组成的系统转换为单一的虚拟Docker主机， 使得容器可以组成跨主机的子网网络。
+        节点。  节点分为管理节点和工作节点
+		服务和任务
+             任务 （Task）是 Swarm 中的最小的调度单位，目前来说就是一个单一的容器。
+             服务 （Services） 是指一组任务的集合，服务定义了任务的属性。服务有两种模式：
+        最小的集群是由一个管理节点和2个工作节点组成的
+
+		
