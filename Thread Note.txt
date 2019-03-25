@@ -1,0 +1,214 @@
+
+Synchronized
+       实例对象
+              1.  对某个特定的对象加锁.    Synchronized(O)
+              2.  对调用该线程的方法加锁    Synchronized(this)
+              3.  作用等同于2， 只是方式不一样。  Synchronized void m(){}
+        静态代码
+               1.  synchronized static void m() == synchronized(T.class){}} 
+
+同步方法为什么不可以和非同步方法同时调用呢， 当我傻呀？？？
+一个同步方法可以调用另外一个同步方法， 一个线程已经拥有某个对象的锁，再次申请的时候仍然会得到该对象的锁，也就是说synchronized获得的锁是可重入的。 在集成中也是同样适用的了
+
+程序在执行的过程中， 如果出现异常， 默认情况锁会被释放的
+
+Voliatile， 在深入理解JVM中对这个变量已经很有理解的了
+
+Voliatile  并不能保证多个线程共同修改running变量时所带来的不一致问题，也就是说volatile不能替代synchronized。
+ 
+ AtomicInteger count = new AtomicInteger(0);  count.incrementAndGet();  代替count++，原子操作
+
+锁定某对象O，  如果O的属性发生变化，不影响锁的使用
+
+不要以字符串常亮作为锁定对象， 因为jdk也有可能用同样的字符串做锁
+
+CountDownLatch latch = new CountDownLatch(1); latch.await();  latch.countDown();
+
+Lock lock = new ReentrantLock();    lock.lock();  lock.unlock(); (在finally中)
+
+boolean locked = lock.tryLock();  if(locked) lock.unlock();
+
+ReentrantLock 还可以制定为公平锁， synchronized 是非公平锁， 效率高， ReentrantLock lock = new ReentrantLock(true);
+
+ThreadLocal(Person) t1 = new ThreadLocal<Person>();  线程本地量， 每个线程独一份
+
+remove 方法是原子的， size()方法也是原子的， 操作和判断相分离， 两个原子的操作合起来就不是原子的啦， do you understand ???
+
+第五章   java中的锁
+    Lock接口
+        Lock提供synchronized不具备的主要特性
+               尝试非阻塞地获取锁，               tryLock
+               能被中断地获取锁                      lockInterruptibly
+               超时获取锁                                tryLock(long time)
+        
+        ReentrantLock   可重入锁，公平锁(默认非公平的)
+       
+        ReentrantReadWriteLock    可重入锁， 公平所， 锁降级   
+               内部维护了一对锁， 读锁和写锁
+               static ReentrantReadWriteLock rwl = new ReentrantReadWriteLock();
+               static Lock r = rwl.readLock();
+               static Lock w = rwl.writeLock();
+               读写锁的同步状态，将一个32位的整形变量切割，高16位表示读， 低16位表示写， 通过位运算来表示
+        
+        LockSupport工具  阻塞当前线程， 不需要放在同步快中
+            Lock.support.park()    LockSupport.unpark(Thread t) 
+            parkNano(Long nanos)        parkUntil(long deadline)  
+       
+        Condition接口，定义了等待/通知两种类型
+            Lock lock = new ReenTrantLock();
+            Condition condition = lock.newCondition();
+            需要注意在调用方法前获取锁       condition.await();   condition.signal();
+          
+            Lock lock = new ReentrantLock();
+            Condition condition = lock.newCondition();
+            public void conditionWait() throws InterruptedException{
+               lock.lock();
+               try{
+                    condition.await();
+              } finally{
+                lock.unlock(); 
+                }
+            }
+           
+            public void conditionSignal() throws InterupptedException{
+                lock.lock();
+                try{
+                    condition.signal(); 
+                }finally{
+                  lock.unlock();
+               }
+            }
+
+第六章     并发容器和框架
+    ConcurrentHashMap
+	    为什么使用concurrenthashmap? 
+            因为在多线程下hashmap的transfer方法会产生死锁，转移的时候是逆序的
+			e.next = newTable[i];
+            newTable[i] = e;
+            转移前链表顺序是1->2->3,那么转移后就会变成3->2->1
+        原理
+            使用分段锁，支持segment数量的并发写
+            segment数组，HashBucket数组， 链表
+    
+    CopyOnWriteArrayList~CopyOnWriteArraySet
+        写时复制的容器
+    
+    ConcurrentLinkedQueue.   
+        基于CAS的一个并发非阻塞队列
+        CAS: 更新一个变量的时候， 只有当变量的预期值A和内存地址V当中的实际值相同时，
+            才会将内存地址V对应的值修改为B。
+        Synchronized 属于悲观锁， CAS属于乐观锁， 乐观的认为程序中的并发情况不那么严重，
+            所以让线程不断的去重试更新。
+			
+    BlockingQueue
+              ArrayBlockingQueue,  LinkedBlockQueue     只有这2个是有界的了。
+			  ArrayBlockingQueue
+              LinkedBlockQueue			  
+              PriorityBlockingQueue       自然顺序升序
+              DelayQueue                  延时获取
+              SynchronusQueue             不存储元素
+              TransferQueue(LinkedTransferQueue)        如果当前有消费者正在等待接受元素（消费者使用take()方法），   
+			        transfer方法可以直接把生产者传入的元素立刻transfer给消费者。 如果没有消费者等待，则放到队列中。
+              LinkedBlockingDeque    双向，addFirst(),   addLast()
+            
+              一直阻塞        put(e), take()
+              返回特殊值      offer(e),  poll()
+              抛出异常        add(), remove()
+              超时退出        offer(e,time, unit) ,  poll(time, unit)
+
+    Fork/Join  框架
+           ForkJoinTask       
+		   RecursiveTask(future)     用于有返回结果的任务
+		   RecusiveAction            用于没有返回结果的任务
+           ForkJoinTask       需要通过ForkJoinPool.submit(task) 来执行的
+
+第八章，。   java中的并发工具类
+          CountDownLatch    允许一个或多个线程等待其他线程完成操作
+                 static CountDownLatch c = new CountDownLatch(2);
+                 c.countDown();
+                 c.await();
+
+           CyclicBarrier   让一组线程到达一个屏障(也可以叫同步点)时被阻塞， 直到最后一个线程到达屏障时，屏障才会开门
+                 static CyclicBarrier c = new CyclicBarrier(2);
+                 c.await();
+
+           CountDownLatch计数器只能使用一次， 而CyclicBarrier的计数器可以使用reset()方法重置。
+         
+           Semaphore    (信号量) 是用来控制同时访问特定资源的线程数量
+                 private static Semaphore s = new Semaphore(10);
+                    s.acquire();
+                    s.release();
+         
+第九章    java中的线程池
+             线程池的优点:
+                       降低资源消耗， 提高程序速度， 提高线程可管理性
+             线程池的主要处理流程
+                      1.  提交任务
+                      2.  判断核心线程池是否已满
+                      3. 判断队列是否已满
+                      4. 判断线程池是否已满
+                      (ELSE) 按照策略处理无法执行的任务   RejectedExceptionHandler
+
+            创建线程池
+                       ThreadPoolExecutor(int corePoolSize,
+                                          int maximumPoolSize,
+                                          long keepAliveTime,
+                                          TimeUnit unit,
+                                          BlockingQueue<Runnable>  workQueue,
+                                          ThreadFactory   threadFactory)
+
+            向线程池提交任务
+                        ExecutorService.execute(Runnable);
+                        executorService.submit(Runnbale);
+                        executorService.submit(Callable);
+                        executorService.inVokeAll(Callable);               一次性提交多个
+                        executorService.inVokeAny(Callable);
+           获得线程执行的返回值
+                       Future<Object> future = executorService.submit(Callable/Runnable);
+                       Object obj  = future.get();    该方法是一个阻塞方法
+
+           关闭线程池
+                        public void shutdown(){}
+                                shutdown, 不再接受新任务， 等待旧任务执行完
+                        public List<Runnable> shutdownNow(){}
+                                 STOP， 然后尝试停止所有的正在执行或暂停任务的线程， 并返回等待执行任务的列表。
+								  遍历线程池中的工作线程，然后诸葛调用线程的interrupt方法来中断线程，所以无法响应中断的任务可能永远无法终止；
+                 
+第十章   Executor框架
+             java的线程即是工作单元，也是执行机制。 把工作单元与执行机制分离开来。 
+			 工作单元包括Runnable 和 callable，  而执行机制由Executor框架提供
+             Executor框架的量级调度模型
+                     在上层， java多线程程序通常把应用分解为若干任务，然后使用用户级的调度器（Executor框架）将这些任务映射为固定数量的线程；
+                     在底层，操作系统内核将这些线程映射到硬件处理器上。
+            Executor框架的结构
+                    任务: Runnable, callable，
+                    任务的执行   Executor,  ExecutorService,   ThreadPoolExecutor,  ScheduleThreadPoolExecutor
+                    异步计算的结果  Future，  FutureTask
+
+            ThreadPoolExecutor 通常使用工厂类Executors来创建 
+                    FixedThreadPool(LinkedBlockingQueue)	     固定线程数量，限制当前线程数量的应用场景
+                    SingleThreadExecutor(LinkedBlockingQueue)    1个线程，  顺序的执行各个任务
+                    CacheThreadPool(SynchronusQueue)  			 队列容量为0， 根据需要创建新线程的线程池。
+            ScheduleThreadPoolExecutor通常使用工厂类Executors来创建
+                    ScheduleThreadPoolExecutor。  (DelayedWorkQueue)包含若干个线程的ScheduledThreadPoolExecutor.
+                    SingleThreadScheduledExecutor. (DelayedWorkQueue)只包含一个线程的ScheduledThreadPoolExecutor.
+            
+            Future / FutureTask   
+                    当我们把Runnable接口或者Callable接口的实现类提交(submit)给ThreadPoolExecutor或ScheduledThreadPoolExecutor时，
+                    ThreadPoolExecutor或ScheduledThreadPoolExecutor会向我们返回一个FutureTask对象。
+                Executors.callable(Runnable task)  把一个runnable 包装成一个Callable
+            
+            使用Callable + FutureTask 获取执行结果
+                ExecutorService es = Executors.newSingleThreadExecutor();
+                CallableDemo calTask = new CallableDemo();
+                FutureTask<Integer> futureTask = new FutureTask<Integer>(calTask);
+                es.submit(futureTask);
+                futureTask.get();
+
+            使用Callable+Future获取执行结果
+                ExecutorService es= Executors.newSingleThreadExecutor();
+                CallableDemo callTask = new CallableDemo();
+                Future<Integer> future = es.submit(callTask);
+
+				
+                                  

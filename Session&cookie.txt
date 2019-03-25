@@ -1,0 +1,36 @@
+Cookie和Session的区别
+                     session      cookie 
+   保存的位置       服务端        客户端 
+   安全性           较安全        较不安全  
+   保存的内容       Object        String
+
+Cookie
+    a. 不是内置对象， 要使用必须new
+    b. 但是， 服务端会自动生成一个(服务端自动new一个cookie) name=JESSIONID的cookie，并返回给客户端
+
+四种范围对象的作用域
+    a. pageContext 当前页面有效(页面跳转后无效)
+    b. request  同一次请求有效，其他请求无效。(请求转发后有效，重定向后无效)
+    c. session 同一次会话有效，(无论怎么跳转，都有效。关闭/切换浏览器后无效: 从登陆-->退出之间，全部有效)
+    d. application 全局变量， 整个项目运行期间都有效。(切换浏览器仍然有效) 
+
+
+重定向可以跨域访问，而转发是在web服务器内部进行的，不能跨域访问
+
+比较转发和重定向
+    a. 浏览器地址有无变化
+           转发之后， 浏览器地址栏无变化；
+           重定向之后，浏览器地址有变化；
+    b. 目的地
+           转发的目的地有限制(同一个web应用)
+           重定向的目的地没有限制
+    c.  能否共享request和response
+            转发可以共享，而重定向不行
+
+请求转发：
+    request.getRequestDispatcher(URL地址).forward(request, response)
+	
+重定向：
+    response.sendRedirect(URL地址)	
+	
+	
