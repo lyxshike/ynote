@@ -1,0 +1,30 @@
+监听器 > 过滤器 > servlet
+Filter 
+    系统级别的，过滤所有的web请求， 对传入的request，response提前过滤掉一些信息， 或者
+      提前设置一些参数， 然后再传入controller
+
+Lister
+    系统级别的监听， 会对特定的事件产生一个处理
+    
+    ServletContextListener
+    ServletContextAttributeListener
+
+    HttpSessionListener
+    HttpSessionAttributeListener
+
+    ServletRequestListener
+    ServletRequestAttributeListener
+
+Interceptor
+    非系统级别的， 基于java反射， 在一个action执行前后执行一段代码
+     
+    Struts2 拦截器
+        继承abstractInterceptor, 实现interceptor方法
+         //执行下一个拦截器， 如果已经是最后一个拦截器， 则执行目标action
+        String result = invocation.invoke();
+        在action中使用指定interceptor
+             <interceptor-ref name="timer"></interceptor-ref>
+
+    springmvc拦截器
+        1. 实现HandlerInterceptor 接口， preHandle, postHandle, afterCompletion
+        2. 继承WebMvcConfiguraAdapter， +Configuration 注解		
