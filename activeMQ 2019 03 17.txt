@@ -1,0 +1,119 @@
+消息中间件   Message-oriented middleware(MOM)
+    1. 为什么需要使用消息中间件？
+	    消息中间件的三大优点:
+             解耦:
+			 异步: 非必要的业务逻辑以同步的方式来运行，太耗费时间了
+             削峰: 在传统架构中，遇到并发量大的时候，所有的请求直接怼到数据库，造成数据库连接异常
+        那么缺点肯定也有的么：
+             系统复杂性增加
+             系统可用性降低
+             研发成本增加
+         			 
+	2. 消息中间件的选型
+           Redis         简单业务场景，规模小
+           RabbitMQ(erlang)，ActiveMQ(java)   稍微复杂的业务场景。
+                         RabbitMQ，对路由，负载均衡或数据持久化有很好的支持      		   
+           RocketMQ:   吞吐量大，因淘宝的业务基于kafka开发的
+		   kafka:      吞吐量大，偏向数据
+	
+    3.  使用消息中间件需要考虑的几个问题
+           保证消息的幂等性（消息重复）
+		      因为网络各种原因确认消息的信号(ack)没及时送达MQ，MQ会重发了  
+              解决方案:
+                   1，根据业务对消息做唯一编号，消费完的消息存到缓存中。每次消费之前来判断			  
+			           for(Message msg: msgs){
+					       //判断是否有重复消息，缓存2分钟之后失效
+						   long currentTime = System.currentTimeMillis();
+                           currentTime += Constants.MSG_EXPIRES_TIME_MILLIS;
+                           Date expireTime  = new Date(currentTime);
+                           long msgIdCount = redisCacheHelper.incr(msg.getKeys(), ExpireTime);
+                           if(msgIdCount > 1){
+						       continue;
+						   }  						   
+					   }
+					   
+					    public long incr(String key, Date expireTime){
+						    long count = redisNumber.incr(key, DEFAULT_INCREMENT);
+							if(1 == count){
+							   redisCache.setExpireTime(key, expireTime);
+							}
+							return count;
+						} 
+					
+                    2， 放到redis中， 或者set中，其实就是hashmap的key					
+				
+           保证消息的顺序性（消息有序）
+		        必须先生成订单，然后才能支付订单。订单消息和支付消息是有顺序性的
+		            利用Activemq的高级特性：messageGroups
+					     Message Groups特性是一种负载均衡的机制。在一个消息被分发到consumer之前，broker首先检查消息JMSXGroupID属性。
+						 如果存在，那么broker会检查是否有某个consumer拥有这个message group。
+						 如果没有，那么broker会选择一个consumer，并将它关联到这个message group。
+						 此后，这个consumer会接收这个message group的所有消息，直到：
+						        Consumer被关闭 
+								Message group被关闭(通过发送一个消息，并设置这个消息的JMSXGroupSeq为-1 )
+	        
+            
+            保证消息的可靠性（消息丢失）
+                一。ActiveMQ的消息签收(acknowledgement)		
+                     SESSION_TRANSACTED				
+		                  在带事务的Session中，签收自动发生在事务提交时。如果事务回滚，所有已经接收的消息将会被再次传送。					 
+					 Session.AUTO_ACKNOWLEDGE  
+                          当消息成功的从receive方法返回时，或者从MessageListener接口的onMessage方法成功返回时，会话自动确认客户端的消息接收
+					 Session.CLIENT_ACKNOWLEDGE
+                          客户端通过调用acknowledge方法来确认客户端收到消息。因为acknowledge（）通知方法是在Message对象上，
+                          确认一个被消费的消息将自动确认所有已消费的其他消息。比如一个消费者已经消费了10条消息，
+						     然后确认了第5条消息被消费，则这10条都被确认消费了。 						  
+                     Session.DUPS_OK_ACKNOWLEDGE
+                           不是必须签收，消息可能会重复发送。在第二次重新传送消息的时候，
+						      消息头的JmsDelivered会被置为true标示当前消息已经传送过一次，客户端需要进行消息的重复处理控制。
+
+                二。发送持久化消息
+                        // 消息是否为持久性的，如果不设置默认是持久化的。
+                        // producer.setDeliveryMode(DeliveryMode.PERSISTENT);
+                        //非持久化消息，消息是不会持久化到磁盘的，发送后如果服务关闭再次开启则消息会丢失。
+                           producer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
+                           jmsTemplate.setDeliveryMode(DeliveryMode.NON_PERSISTENT);						   
+
+    JMS 
+	   Java Message Service, 面向消息中间件(MOM)的API, 是java平台的专业技术规范
+	   JMS对象模型几要素:
+	       1. ConnectionFactory  连接工厂
+		   2. Connection         JMS连接
+		   3. Session            JMS会话
+           4. Destination        JMS 目标
+           5. Message            JMS 消息
+           6. MessageProducer/Consumer  JMS生产者和消费者
+           7. JMS消息类型      P2P,  Publish/Subscribe
+        
+	
+    ActiveMQ 几个知识点
+        签收机制上面已经将清楚了
+        
+        消息的持久化
+            ActiveMQ的持久化机制包含JDBC，KahaDB、LevelDB
+            在activemq.xml中查看默认的broker持久化机制。
+                <persistenceAdapter>
+                      <kahaDB directory="${activemq.data}/kahadb"/>
+                </persistenceAdapter>	
+            将持久化方式改为JDBC
+                <persistenceAdapter>
+                      <!-- <kahaDB directory="${activemq.data}/kahadb"/> -->
+                      <jdbcPersistenceAdapter dataSource="#mysql-ds" createTablesOnStartup="false" />
+                </persistenceAdapter>	
+				      createTablesOnStartup默认值是true，即每次ActiveMQ启动的时候都重新创建数据表，一般是首次启动设置为true，之后设置为false。
+			同时，在broker标签外设置bean 
+                <bean id="mysql-ds" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+                        <property name="driverClassName" value="com.mysql.jdbc.Driver"/>
+                        <property name="url" value="jdbc:mysql://127.0.0.1:3306/activemq?relaxAutoCommit=true"/>
+                        <property name="username" value="root"/>
+                        <property name="password" value="root"/>
+                        <property name="maxActive" value="200"/>
+                        <property name="poolPreparedStatements" value="true"/>
+                </bean>
+            将mysql，commons-pool，commons-dbcp，commons-collections jar 放置到activemq的lib目录下。
+			    参考 ： https://blog.csdn.net/qiushisoftware/article/details/78869705
+				
+				
+				
+	 
+	             
