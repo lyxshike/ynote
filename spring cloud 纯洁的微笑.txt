@@ -1,0 +1,197 @@
+Ribbon
+     是一个基于客户端的负载均衡的工具
+	 默认规则配置步骤
+        1. pom中添加ribbon的依赖
+        2. 对项目中的ConfigBean中的RestTemplate添加@LoadBalanced注解
+        3. 修改Controller中的Rest地址， From 具体的端口号 To serviceID
+     7种规则配置步骤
+        前3步同上
+          4. 在ConfigBean中添加如下代码
+             @Bean
+             public IRule myRule(){
+			      return new RandomRule();
+			 }
+     Ribbon核心组件IRule
+        RoundRobinRule    轮询(default)
+        RandomRule        随机
+        WeightedResponseTimeRule   时间权重
+        还有其他4种， AvailabilityFilteringRule, RetryRule, BestAvailableRule, ZoneAvoidanceRule
+     
+	 自定义规则配置步骤(某个具体的服务，使用特定负载均衡的规则)
+	    前三步同上
+		4.在主启动类上添加
+		  @RibbonClient(name="MICROSERVICECLOUD-DEPT",configuration=MySelfRule.class)
+		5.不能被扫描到的路径下面写MySelfRule.class类
+              @Configuration
+              public class MySelfRule{
+			  @Bean
+              public IRule myRule(){
+			     return new RandomRule_ZY();
+			  }			  
+			  }			  
+       	6. 重写RandomRule_ZY类， 继承了AbstractLoadBalanceRule.
+
+Feign 是一个声明式WebService客户端,(可以与Eureka，Ribbon组合以支持负载均衡)
+      Feign 整合了Ribbon 和 Hystrix
+      Spring Boot 是对 Spring + springMVC的简化
+      1. pom中添加Feign的依赖
+      2. 新增接口
+           @FeignClient(value="MICROSERVICECLOUD-DEPT")
+           public interface DeptClientService{
+		   
+		       @RequestMapping(value="/dept/get/{id}", method=RequestMethod.GET)
+			   public Dept get(@PathVariable("id") long id);
+			   
+			   @RequestMapping(value="/dept/list",method=RequestMethod.GET)
+			   public List<Dept> list();
+			   
+			   @RequestMapping(value="/dept/add",method=RequestMethod.POST)
+			   public boolean add(Dept dept);
+		   }		   
+	   3. 在controller中添加对DeptClientService的依赖
+       4. 在主启动类上添加注解 @EnableFeignClients
+          备注：
+             Feign通过接口的方法调用Rest服务(之前是Ribbon+RestTemplate)
+             该请求发送给Eureka服务器(http://MICROSERVICECLOUD-DEPT/dept/list),
+              通过Feign直接找到服务接口，由于在进行服务调用的时候融合了Ribbon技术，所以也支持负载均衡
+
+Feign Hystrix 是一个用于处理分布式系统的延迟和容错的开源库
+    服务熔断  某个service不可用， 要防止雪崩， 需要返回预定义的错误处理数据
+        1.pom中添加hystrix的依赖
+        2.Controller 类中具体的方法上添加@HystrixCommamd注解
+           @HystrixCommad(fallbackMethod="processHystrix_Get")
+           在当前类中实现processHystrix_Get()方法，当出错后，返回被预封装的数据
+        3.主启动类上添加  @EnableCircuitBreaker   		   
+	
+    服务降级  整体资源快不够了，忍痛将某些服务先关掉，待度过难关，再开启回来
+        1. pom中添加hystrix的依赖
+        2. 根据已经有的DeptService接口新建一个实现了FallbackFactory接口的类DeptClientServiceFallBackFactory
+        3. 在DeptClientService接口的注解@FeignClient中添加fallbackFactory属性值
+		     @FeignClient(value="MICROSERVICECLOUD-DEPT",fallbackFactory=DeptClientServiceFallBackFactory.class)
+		4. 在yml文件中添加feign.hystrix.enabled: true
+    
+    请求缓存
+        @CacheResult   方法的所有参数都将作为缓存的key
+        @HystrixCommad
+
+        @CacheKey   来制定缓存的key
+           public Book test6(@CacheKey Integer id, String aa){}
+
+        @CacheRemove    让缓存失效
+   
+    服务监控  hystrixDashboard
+        1. pom中添加hystrix-dashboard的依赖
+        2. 主启动类上添加@EnableHystrixDashboard
+        3. http://localhost:9001/hystrix        
+        7色  1圈 1线  		
+		   曲线， 用来记录2分钟内流量的相对变化， 可以通过它来观察到流量的上升和下降趋势
+		   圈  圈的颜色代表健康度， 健康度从绿色<黄色<橙色<红色 递减
+		       圈的大小， 代表流量
+			   
+		服务熔断一般是某个服务(下游服务)故障引起的， 而服务降级一般是从整体负荷考虑
+
+Zuul 提供简单路由， 路由熔断， 路由重试，  微服务架构中用zuul构建API gateway
+    简单路由：
+       1. pom中添加zuul的依赖
+       2. 主启动类上添加@EnableZuulProxy
+       3. yml文件中添加
+             #这里的配置表示， 访问/it/**  直接重定向到http://www.ityouknow.com
+             zuul.routes.baidu.path=/it/**
+             zuul.routes.baidu.url = http://www.ityouknow.com/
+            
+            去
+            zuul.routes.api-a.path = /producer/**
+            zuul.routes.api-a.serviceId= spring-cloud-producer
+			
+    路由熔断  集成FallbackProvider(ZuulFallbackProvider)
+            getRoute方法， 告诉Zuul它是负责哪个route定义的熔断
+            fallbackresponse 方法则是告诉Zuul断路出现时，它会提供一个什么返回值来处理请求
+            ZUUL和hystrix的区别？
+                zuul目前只支持服务级别的熔断， 不支持具体到某个URL进行熔断
+     
+    路由重试   因为网络或者其他原因，服务可能会暂时的不可用，这个视乎我们希望可以再次对服务进行重试
+        1. pom中添加Spring Retry依赖
+        2. 开启ZUUL Retry
+              #是否开启重试功能
+			  zuul.retryable=true
+              #对当前服务的重试次数
+			  ribbon.MaxAutoRetrues =2
+              #切换相同server的次数
+              ribbon.MaxAutoRetriesNextServer=0
+    
+    ZUUL的核心是Filter， Filter的生命周期有4个， 分别为PRE, ROUTING, POST, ERROR.
+        PRE, 身份验证。  POST, 手机统计信息和指标。
+        
+        自定义Filter
+           1. 继承ZuulFilter， 重写其中的业务run()方法。
+                filterType(){return "pre"}	  表明是那种路由器
+                filterOrder(){return 0} 相同类型的filter，数字越大，优先级越大
+                shouldFilter(){return true}  是否执行该过滤器
+           2. 在启动类中添加如下代码
+              @Bean            
+              public TokenFilter tokenFilter(){
+			     return new TokenFilter();
+			  }			  
+		   3. 主启动类添加@EnableZuulProxy注解
+        
+Spring Could Config 是一个解决分布式系统的配置管理方案。 其客户端就是我们的各个微服务应用
+    重试机制:  由于网络抖动等原因导致 config-client 在启动的时候访问 config-server 
+               没有访问成功从而报错
+        1. 添加spring-retry 依赖
+        2. 相关配置
+            #配置重试次数， 默认为6
+			spring.cloud.config.retry.max-attempts  =6
+            #间隔乘数，默认为1.1
+			spring.cloud.config.retry.multiplier = 1.1
+            #初始重试间隔时间， 默认为1000ms
+			spring.cloud.config.retry.initial-interval = 1000
+            #最大间隔时间， 默认为2000ms			
+			spring.cloud.config.retry.max-interval = 20000
+			
+	动态刷新配置: 动态的更新了git仓库中的配置文件，那么我如何让我的config-client，
+                能够及时感知到呢
+        1. 添加actuator依赖
+        2. 该依赖中包含了/refresh端点的实现，需要在appliaction.yml中配置忽略权限拦截
+		      management.security.enabled = false
+        3. 调用/refresh		
+		
+	Server 端: 
+        1. pom中添加config-server依赖
+        2. yml中如下写:
+            cloud:
+              config:
+                server:
+                  git:
+                    uri: https://github.com/ityouknow/spring-cloud-starter #配置git仓库的地址
+                    search-paths:  config-repo    #git仓库地址下的相对地址， 可以配置多个
+                    username:                     # git仓库的账号
+                    password:                     # git仓库的密码 
+        3. 启动类添加@EnableConfigServer
+
+    Client端
+        1. application.properties
+           	spring.application.name = microservicecloud-config-client   #需要从github上读取的资源名称，注意没有yml           
+            server.port = 8002
+        2. bootstrap.properties      
+              spring.cloud.config.name = microservicecloud-config-client  #对应{application}部分
+              spring.cloud.config.profile = dev                   #对应{profile}部分
+              spring.cloud.config.uri = http://localhost:8001/    # 配置中心的具体地址 
+              spring.cloud.config.label=master			          # 对应git的分支。 如果配置中心使用本地存储，则无意义 
+			  
+Eureka 提供服务注册和服务发现的功能
+        Rureka Server, Service Provider, Service Consumer
+	Eureka Server	
+    1. pom添加eureka-server 依赖 
+    2. 启动类代码中添加@EnableEurekaServer
+    3. yml中添加如下:
+         eureka.client.register-with-eureka = false  #表示是否将自己注册到Eureka Server，默认为true 
+         eureka.client.fetch-registry=false          #表示是否从Eureka Server获取注册信息，默认为true
+         eureka.client.serviceUrl.defaultZone=http://localhost:${server.port}/eureka/
+              设置与Eureka Server交互的地址，查询服务和注册服务都需要依赖这个地址。 默认是http://localhost:8761/eureka
+
+        双节点注册中心， eureka.client.serviceUrl.defaultZone = http://peer2:8001/eureka/ 
+                         eureka.client.serviceUrl.defaultZone = http://peer1:8000/eureka
+        
+	Eureka Client	
+         在其他项目的yml中添加如下， 主启动类上添加@enableEurekaClient, @EnableDiscoveryClient
+          eureka.client.serviceUrl.defaultZone = http://localhost:8000/eureka/   
