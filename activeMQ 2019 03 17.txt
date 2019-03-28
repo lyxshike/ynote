@@ -53,21 +53,21 @@
 								Message group被关闭(通过发送一个消息，并设置这个消息的JMSXGroupSeq为-1 )
 	        
             
-            保证消息的可靠性（消息丢失）
-                一。ActiveMQ的消息签收(acknowledgement)		
-                     SESSION_TRANSACTED				
-		                  在带事务的Session中，签收自动发生在事务提交时。如果事务回滚，所有已经接收的消息将会被再次传送。					 
-					 Session.AUTO_ACKNOWLEDGE  
-                          当消息成功的从receive方法返回时，或者从MessageListener接口的onMessage方法成功返回时，会话自动确认客户端的消息接收
-					 Session.CLIENT_ACKNOWLEDGE
-                          客户端通过调用acknowledge方法来确认客户端收到消息。因为acknowledge（）通知方法是在Message对象上，
-                          确认一个被消费的消息将自动确认所有已消费的其他消息。比如一个消费者已经消费了10条消息，
+      保证消息的可靠性（消息丢失）
+          一。ActiveMQ的消息签收(acknowledgement)		
+                   SESSION_TRANSACTED				
+		      在带事务的Session中，签收自动发生在事务提交时。如果事务回滚，所有已经接收的消息将会被再次传送。					 
+		   Session.AUTO_ACKNOWLEDGE  
+                      当消息成功的从receive方法返回时，或者从MessageListener接口的onMessage方法成功返回时，会话自动确认客户端的消息接收
+		   Session.CLIENT_ACKNOWLEDGE
+                         客户端通过调用acknowledge方法来确认客户端收到消息。因为acknowledge（）通知方法是在Message对象上，
+                         确认一个被消费的消息将自动确认所有已消费的其他消息。比如一个消费者已经消费了10条消息，
 						     然后确认了第5条消息被消费，则这10条都被确认消费了。 						  
-                     Session.DUPS_OK_ACKNOWLEDGE
-                           不是必须签收，消息可能会重复发送。在第二次重新传送消息的时候，
-						      消息头的JmsDelivered会被置为true标示当前消息已经传送过一次，客户端需要进行消息的重复处理控制。
+                    Session.DUPS_OK_ACKNOWLEDGE
+                        不是必须签收，消息可能会重复发送。在第二次重新传送消息的时候，
+		        消息头的JmsDelivered会被置为true标示当前消息已经传送过一次，客户端需要进行消息的重复处理控制。
 
-                二。发送持久化消息
+           二。发送持久化消息
                         // 消息是否为持久性的，如果不设置默认是持久化的。
                         // producer.setDeliveryMode(DeliveryMode.PERSISTENT);
                         //非持久化消息，消息是不会持久化到磁盘的，发送后如果服务关闭再次开启则消息会丢失。
@@ -112,8 +112,15 @@ ActiveMQ 几个知识点
                 </bean>
                将mysql，commons-pool，commons-dbcp，commons-collections jar 放置到activemq的lib目录下。
 			    参考 ： https://blog.csdn.net/qiushisoftware/article/details/78869705
+       消息的重发机制
+	       1.定义RedeliveryPolicy,然后设置各种重发的参数。
+	       2.将该bean放到activeMQConnectionFactory中
+	
+	kahadb
+	    B树，消息的索引，根据它能恢复出每条消息的location。
+	    如果b树损坏，可以根据data log来重建b树。
+	    
+	    
 				
-				
-				
-	 
+ 
 	             
