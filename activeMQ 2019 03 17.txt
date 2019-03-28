@@ -86,10 +86,10 @@
            7. JMS消息类型      P2P,  Publish/Subscribe
         
 	
-    ActiveMQ 几个知识点
-        签收机制上面已经将清楚了
+ActiveMQ 几个知识点
+     签收机制上面已经将清楚了
         
-        消息的持久化
+     消息的持久化
             ActiveMQ的持久化机制包含JDBC，KahaDB、LevelDB
             在activemq.xml中查看默认的broker持久化机制。
                 <persistenceAdapter>
@@ -100,7 +100,7 @@
                       <!-- <kahaDB directory="${activemq.data}/kahadb"/> -->
                       <jdbcPersistenceAdapter dataSource="#mysql-ds" createTablesOnStartup="false" />
                 </persistenceAdapter>	
-				      createTablesOnStartup默认值是true，即每次ActiveMQ启动的时候都重新创建数据表，一般是首次启动设置为true，之后设置为false。
+		createTablesOnStartup默认值是true，即每次ActiveMQ启动的时候都重新创建数据表，一般是首次启动设置为true，之后设置为false。
 			同时，在broker标签外设置bean 
                 <bean id="mysql-ds" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
                         <property name="driverClassName" value="com.mysql.jdbc.Driver"/>
@@ -110,7 +110,7 @@
                         <property name="maxActive" value="200"/>
                         <property name="poolPreparedStatements" value="true"/>
                 </bean>
-            将mysql，commons-pool，commons-dbcp，commons-collections jar 放置到activemq的lib目录下。
+               将mysql，commons-pool，commons-dbcp，commons-collections jar 放置到activemq的lib目录下。
 			    参考 ： https://blog.csdn.net/qiushisoftware/article/details/78869705
 				
 				
