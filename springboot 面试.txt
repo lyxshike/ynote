@@ -1,0 +1,64 @@
+1. 什么是springboot？
+     springboot整合了spring+springMVC,简化了使用spring的难度，是spring组件一站式解决方案
+	 
+2.  为什么要用springboot？
+     自动配置， no xml， 简化配置， 容易上手
+	 
+3.  springboot的核心配置文件有哪些？
+     application
+	 bootstrap: spring-cloud-config, 加解密
+	 
+4.  springboot的核心注解
+     @SpringbootApplication
+         @CompontScan    spring组件扫描
+         @SpringbootConfiguration    组合了@Configuration注解，实现配置文件的功能
+         @EnableAutoConfiguration	 打开自动配置的功能，也可以关闭某个自动配置选项
+               @SpringbootApplication(exclude={DataSpurceAutoConfiguration.class})
+
+5.  运行springboot有哪几种方式？
+        1. 放到tomcat容器中
+        2. 用maven
+        3. 直接执行main方法
+
+6.  如何理解springboot starters
+        Starters可以理解为启动器，包含了一系列可以集成到应用中的依赖包，可以一站式
+         集成spring及其他技术
+
+7.  如何在springboot启动的时候运行一些特定的代码
+        实现接口ApplicationRunner 或 CommandLineRunner
+
+8.  springboot有哪几种读取配置的方式
+       @Value @PropertySource
+
+9   springboot 支持哪些日志框架
+        log4j, logback（default）
+
+10. spring可以兼容老spring项目吗
+        用@ImportResource导入老spirng项目配置文件
+
+11. 保护spring boot应用的方式
+        用HTTPS, 防止XSS, 升级到最新版
+		 HTTPS比HTTP更安全，需要ca证书。
+		 XSS，跨站脚本攻击，比如"<"
+
+12. 开启springboot特性
+        1. 继承spring-boot-starter-parent
+        2. 导入spring-boot-dependencies
+
+13. springboot自动配置原理
+        @SpringbootApplication
+           @EnableAutoConfiguration，将类路径下的META-INF中的spring.factories里面配置的
+              EnableAutoConfiguration的值加入到容器中，里面有很多配置类的，每一个配置类
+              进行自动配置功能
+            根据当前不同的条件来判断决定这个配置类是否生效， 这个配置类给容器中添加组件
+
+14. springboot外部文件的加载顺序。
+        优先级由高到低， 不同的配置则会形成互补配置，相同配置优先级高的会顶替掉优先级低的
+        命令行参数
+        jar包外部application-{profile}.properties/application.yml带spring.profile的配置文件
+        jar包内部带spring.profile的配置文件
+        jar包外部没有带spring.profile的配置文件 
+        jar包内部没有带spring.profile的配置文件		
+		
+		相同情况下， 优先级properties高于yml。。
+		

@@ -1,0 +1,26 @@
+1. 什么是springcloud
+    基于springboot提供了一套微服务解决方案，是各个微服务架构的集合体，包括5大神兽
+
+2. springcloud和dubbo的区别？
+     dubbo服务之间采用RPC调用， springcloud采用基于HTTP的RESTful API调用
+	 
+3.  微服务的优缺点：
+       难部署，系统复杂，服务之间通信成本
+	   高内聚，松耦合 开发简单，效率高 使用不同语言开发
+	   
+4.  eureka和zookeeper的区别
+       eureka保证AP， zookeeper保证CP。
+
+5.  什么是微服务？
+       微服务强调的是服务的大小，它关注的是某一个点
+	   微服务架构，是一种架构模式，它提倡将单一的应用程序划分为一组小的服务
+	   每个服务运行在其独立的进程中，服务与服务间基于HTTP协议的RESTfUL API进行通讯
+	   
+6.  Ribbon 负载均衡   自带7种规则， 也可以自己定义
+    Hystrix 服务熔断， 服务降级(feign)， 请求缓存， 服务监控(7,1,1)
+    Zuul API gateway, 简单路由， 路由熔断， 路由重试
+    springcloudconfig, 动态刷新， 重试机制
+    Eureka  服务注册和发现
+    Feign webservice客户端， Feign整合了Ribbon和hystrix。。
+
+  	
