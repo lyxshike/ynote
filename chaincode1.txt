@@ -1,0 +1,81 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"github.com/hyperledger/fabric/core/chaincode/shim"
+	sc "github.com/hyperledger/fabric/protos/peer"
+)
+
+// Define the Smart Contract structure
+type SmartContract struct {
+}
+
+func (s *SmartContract) Init(APIstub shim.ChaincodeStubInterface) sc.Response {
+	fmt.Println("Initing chaincode")
+	_, args := APIstub.GetFunctionAndParameters()
+
+	if len(args) > 10 {
+		return shim.Error("Incorrect number of arguments. Expecting 1")
+	}
+
+	return shim.Success(nil)
+}
+
+func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) sc.Response {
+
+	// Retrieve the requested Smart Contract function and arguments
+	function, args := APIstub.GetFunctionAndParameters()
+
+	// Route to the appropriate handler function to interact with the ledger appropriately
+	if function == "CreditAccountInfo" {
+		return s.CreditAccountInfo(APIstub, args)
+	} else if function == "QueryAccountInfo" {
+		return s.QueryAccountInfo(APIstub, args)
+	} else if function == "delete" {
+		return s.delete(APIstub, args)
+	}
+
+	return shim.Error("Invalid Smart Contract function name.")
+}
+
+func (s *SmartContract) CreditAccountInfo(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
+
+	data, err := json.Marshal(args[1])
+
+	if err != nil {
+		return shim.Error("Incorrect")
+	}
+
+	err = APIstub.PutState(args[0], data)
+
+	return shim.Success(nil)
+}
+
+func (s *SmartContract) QueryAccountInfo(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
+
+	data, err := APIstub.GetState(args[0])
+
+	if err != nil {
+		return shim.Error("Incorrect")
+	}
+
+	return shim.Success(data)
+}
+
+func (s *SmartContract) delete(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
+
+	APIstub.DelState(args[0])
+
+	return shim.Success(nil)
+}
+
+// The main function is only relevant in unit test mode. Only included here for completeness.
+func main() {
+
+	// Create a new Smart Contract
+	err := shim.Start(new(SmartContract))
+	if err != nil {
+		fmt.Printf("Error creating new Smart Contract: %s", err)
+	}
+}
